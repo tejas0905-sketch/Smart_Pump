@@ -1,0 +1,952 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart 3D Water Pump Simulator</title>
+<style>
+:root{
+  --bg:#071522;--panel:#102b40;--panel2:#0b2031;--line:#294b62;
+  --txt:#edf8ff;--muted:#a9c1d0;--cyan:#54d8f5;--green:#55e2ad;
+  --red:#ff7184;--amber:#ffd477;--glow:0 14px 34px rgba(0,0,0,.24)
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;min-height:100vh;
+  background:
+    radial-gradient(ellipse at 12% 0%,rgba(35,139,177,.25),transparent 38%),
+    radial-gradient(ellipse at 92% 12%,rgba(39,112,150,.18),transparent 32%),
+    linear-gradient(145deg,#071522,#0a1b2a 55%,#06121d);
+  color:var(--txt);font:14px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Arial
+}
+header{
+  max-width:1500px;margin:0 auto;padding:25px 20px 20px;
+  display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap
+}
+header>div:first-child{position:relative;padding-left:15px}
+header>div:first-child:before{
+  content:"";position:absolute;left:0;top:4px;bottom:4px;width:4px;border-radius:8px;
+  background:linear-gradient(180deg,var(--cyan),#4388ff);box-shadow:0 0 18px #42d3f566
+}
+h1{font-size:clamp(1.45rem,3vw,2.15rem);line-height:1.2;letter-spacing:-.035em;margin:0;font-weight:850}
+header p{color:#8fdcf0;margin:7px 0 0;font-size:clamp(.78rem,1.5vw,.96rem);font-weight:750;letter-spacing:.075em;text-transform:uppercase}
+p{color:var(--muted);margin:4px 0}
+.layout{max-width:1500px;margin:auto;padding:0 18px 24px;display:grid;grid-template-columns:minmax(0,1.48fr) minmax(320px,.92fr);gap:16px}
+.card{
+  background:linear-gradient(145deg,rgba(20,49,69,.97),rgba(9,29,44,.98));
+  border:1px solid rgba(91,145,174,.28);border-radius:17px;padding:16px;
+  min-width:0;box-shadow:var(--glow);backdrop-filter:blur(10px)
+}
+.scene{padding:0;overflow:hidden}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--line)}
+h2{font-size:1rem;letter-spacing:.01em;margin:0 0 11px;font-weight:800}
+.bar h2{margin:0}
+#viewport{height:460px;position:relative;background:linear-gradient(180deg,#143a54,#0b2438);overflow:hidden}
+#viewport canvas{display:block;width:100%!important;height:100%!important}
+.hint{position:absolute;bottom:12px;left:12px;background:rgba(4,17,28,.82);border:1px solid #41647a;padding:7px 10px;border-radius:9px;font-size:11px;color:#e0f3fc;pointer-events:none;z-index:5;backdrop-filter:blur(8px)}
+.pill{padding:6px 11px;border-radius:99px;background:#293f4d;color:var(--muted);font-size:10px;font-weight:850;letter-spacing:.07em;border:1px solid #456174}
+.on{background:#124936;color:var(--green);border-color:#28795c}
+.bad{background:#512532;color:#ffb2bd;border-color:#884454}
+.warn{background:#51421f;color:var(--amber);border-color:#80692f}
+.legend{display:flex;gap:13px;flex-wrap:wrap;padding:12px 15px;font-size:11px;color:var(--muted);border-top:1px solid var(--line);align-items:center;background:#0a1d2b}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;box-shadow:0 0 8px currentColor}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:12px}
+.stat{background:linear-gradient(145deg,#102b3d,#091c2a);border:1px solid #284a60;border-radius:12px;padding:12px;min-width:0;transition:transform .2s,border-color .2s}
+.stat:hover{transform:translateY(-2px);border-color:#4b9bb7}
+.stat span{font-size:10px;color:var(--muted);display:block;letter-spacing:.025em}
+.stat b{font-size:clamp(1rem,2vw,1.35rem);display:block;margin-top:4px;letter-spacing:-.025em;color:#f3fbff;overflow-wrap:anywhere}
+.right{display:grid;gap:12px;align-content:start}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.control{background:rgba(5,23,36,.72);border:1px solid #28485d;border-radius:11px;padding:10px;min-width:0}
+.control label{display:flex;justify-content:space-between;gap:5px;font-size:11px;color:#d2e6f0;margin-bottom:7px;font-weight:650}
+.control input,.control select{width:100%;background:#143449;color:var(--txt);border:1px solid #3b6075;border-radius:8px;padding:8px;outline:none}
+.control input:focus,.control select:focus{border-color:var(--cyan);box-shadow:0 0 0 3px #54d8f522}
+.control input[type=range]{padding:0;accent-color:var(--cyan);cursor:pointer}
+button{border:1px solid #42657a;border-radius:9px;background:linear-gradient(145deg,#21465d,#17364a);color:var(--txt);padding:9px 12px;font-weight:750;cursor:pointer;transition:transform .15s,filter .15s,border-color .15s;box-shadow:0 4px 12px #0002}
+button:hover{filter:brightness(1.17);transform:translateY(-1px);border-color:#70b7d4}
+button:active{transform:translateY(0)}
+button:disabled{opacity:.4;cursor:not-allowed}
+.green{background:linear-gradient(145deg,#1c654c,#174735);border-color:#318b69}
+.red{background:linear-gradient(145deg,#713344,#512633);border-color:#9a4b5b}
+.blue{background:linear-gradient(145deg,#69e3f7,#3bb9dd);color:#052333;border-color:#7cecff}
+.amber{background:linear-gradient(145deg,#725a25,#4d3d1d);border-color:#987b37}
+.buttons{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+.buttons button{flex:1}
+.line{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:9px 0;font-size:12px;color:#d7e8f0}
+.line input{accent-color:var(--cyan);width:16px;height:16px}
+.sensors{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:9px}
+.sensor{background:#091d2b;border:1px solid #29495d;border-radius:9px;padding:9px;display:flex;gap:8px;align-items:center;font-size:11px;color:#d6e7ef}
+.lamp{width:9px;height:9px;border-radius:50%;background:#627887;flex-shrink:0}
+.lamp.ok{background:var(--green);box-shadow:0 0 10px #50e0a288}
+.lamp.no{background:var(--red);box-shadow:0 0 10px #ff657888}
+.alarm{padding:10px 11px;border-radius:10px;background:#12372e;color:#a8f4d2;border:1px solid #246a54;font-size:12px}
+.alarm.active{background:#42222c;color:#ffb4be;border-color:#87414d}
+.log{height:130px;overflow:auto;background:#061722;border:1px solid #29495d;border-radius:9px;padding:10px;font-size:11px}
+.log p{margin:0 0 7px;color:#c5d9e4}
+.log time{color:var(--cyan);font-weight:bold}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
+.chart{background:linear-gradient(145deg,#0d2637,#081b29);border:1px solid #29495d;border-radius:11px;padding:10px}
+.chart h3{font-size:11px;color:var(--muted);margin:0 0 5px;font-weight:750}
+.chart canvas{width:100%;height:85px}
+.foot{max-width:1450px;margin:auto;padding:0 15px 18px;color:#8da8b8;font-size:11px}
+.circuit-panel{background:linear-gradient(145deg,#091e2c,#0d293a);border:1px solid #2a4d63;border-radius:11px;padding:13px;margin-top:10px}
+.circuit-panel h3{font-size:12px;color:var(--cyan);margin:0 0 8px}
+.circuit-row{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#c5d9e4;padding:6px 0;border-bottom:1px dashed #29495d}
+.circuit-row:last-child{border-bottom:none}
+.circuit-row .val{color:#72e1fa;font-weight:800;font-variant-numeric:tabular-nums}
+@media(max-width:950px){.layout{grid-template-columns:1fr}.right{grid-template-columns:1fr 1fr}.right .card:last-child{grid-column:1/-1}#viewport{height:400px}}
+@media(max-width:600px){
+  header{padding:19px 12px 15px}.layout{padding:0 8px 16px;gap:10px}
+  .right{grid-template-columns:1fr}.right .card:last-child{grid-column:auto}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))}#viewport{height:340px}
+  .charts{grid-template-columns:1fr}.card{padding:12px}.scene{padding:0}
+  .bar{padding:12px}.legend{gap:9px;padding:10px}
+}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>💧 Smart 3D Water Pump Simulator</h1><p>Information Technology Department, Sanjivani College of Engineering, Kopargaon</p></div>
+  <div class="buttons" style="margin:0">
+    <button id="pause">⏸ Pause</button>
+    <button id="speedBtn">Speed 1×</button>
+    <button id="reset">↻ Reset</button>
+  </div>
+</header>
+
+<div class="layout">
+  <section>
+    <div class="card scene">
+      <div class="bar"><h2>3D system view</h2><span id="status" class="pill bad">POWER OFF</span></div>
+      <div id="viewport"><div class="hint">Drag to rotate · scroll to zoom · click a component for details</div></div>
+      <div class="legend">
+        <span><i class="dot" style="background:#42d3f5"></i>Water flow</span>
+        <span><i class="dot" style="background:#50e0a2"></i>Healthy / energized</span>
+        <span><i class="dot" style="background:#ffd166"></i>Warning</span>
+        <span><i class="dot" style="background:#ff6578"></i>Fault / off</span>
+        <button id="camera" style="margin-left:auto;padding:4px 8px">Reset camera</button>
+        <button id="labels" style="padding:4px 8px">Labels ON/OFF</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><span>Overhead tank</span><b id="tankStat">175 L</b><span id="tankPct">35% / 500 L</span></div>
+      <div class="stat"><span>Source water</span><b id="sourceStat">960 L</b><span>Underground source</span></div>
+      <div class="stat"><span>Water flow</span><b id="flowStat">0 L/min</b><span>Estimated delivery</span></div>
+      <div class="stat"><span>Pressure</span><b id="pressureStat">0.00 bar</b><span>Illustrative</span></div>
+      <div class="stat"><span>Motor power</span><b id="powerStat">0 W</b><span id="currentStat">0 A estimated</span></div>
+      <div class="stat"><span>Energy used</span><b id="energyStat">0.000 kWh</b><span>Simulation total</span></div>
+      <div class="stat"><span>Water demand</span><b id="demandStat">4 L/min</b><span>Household use</span></div>
+      <div class="stat"><span>Simulated time</span><b id="clockStat">0:00:00</b><span>Elapsed time</span></div>
+    </div>
+
+    <div class="charts">
+      <div class="chart"><h3>Tank level history (%)</h3><canvas id="chartTank" width="400" height="100"></canvas></div>
+      <div class="chart"><h3>Flow history (L/min)</h3><canvas id="chartFlow" width="400" height="100"></canvas></div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <h2>⚡ KCL / KVL Demonstration</h2>
+      <div class="circuit-panel">
+        <h3>KCL — Current entering motor node = current leaving motor node</h3>
+        <div class="circuit-row"><span>Current into motor (A)</span><span class="val" id="kclIn">0.00 A</span></div>
+        <div class="circuit-row"><span>Current out of motor (A)</span><span class="val" id="kclOut">0.00 A</span></div>
+        <div class="circuit-row"><span>Difference (should be 0)</span><span class="val" id="kclDiff">0.000 A</span></div>
+      </div>
+      <div class="circuit-panel">
+        <h3>KVL — Supply voltage = sum of voltage drops (wiring resistance 0.6 Ω)</h3>
+        <div class="circuit-row"><span>Supply voltage (V)</span><span class="val" id="kvlSupply">0.00 V</span></div>
+        <div class="circuit-row"><span>Voltage drop across motor (V)</span><span class="val" id="kvlMotor">0.00 V</span></div>
+        <div class="circuit-row"><span>Voltage drop across wiring (V)</span><span class="val" id="kvlWire">0.00 V</span></div>
+        <div class="circuit-row"><span>Sum of drops (V)</span><span class="val" id="kvlSum">0.00 V</span></div>
+        <div class="circuit-row"><span>Difference (should be 0)</span><span class="val" id="kvlDiff">0.000 V</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="right">
+    <div class="card">
+      <div class="bar" style="padding:0 0 10px;border:0"><h2>Power &amp; pump controls</h2><span id="modeBadge" class="pill on">AUTO</span></div>
+      <div class="line"><span>⚡ Main electricity supply</span><button id="power" class="green">Supply ON</button></div>
+      <div class="grid">
+        <div class="control"><label>Operating mode</label>
+          <select id="mode">
+            <option value="auto">Automatic</option>
+            <option value="manual">Manual</option>
+            <option value="maintenance">Maintenance</option>
+          </select>
+        </div>
+        <div class="control"><label>Water source</label>
+          <select id="sourceType"><option value="underground">Underground tank</option><option value="municipal">Municipal supply</option><option value="rain">Rainwater tank</option></select>
+        </div>
+      </div>
+      <div class="buttons">
+        <button id="start" class="blue">▶ Start pump</button>
+        <button id="stop" class="red">■ Stop pump</button>
+        <button id="estop" class="red">Emergency stop</button>
+      </div>
+      <div class="line"><span>Auto restart after power restoration</span><input id="autoRestart" type="checkbox" checked></div>
+      <div class="line"><span>Automatic inlet valve</span><input id="autoValve" type="checkbox" checked></div>
+      <div class="line"><span>Duty/standby second pump</span><input id="dual" type="checkbox"></div>
+      <div class="grid">
+        <div class="control"><label>Supply voltage (V)</label><input id="voltage" type="number" min="110" max="480" value="230"></div>
+        <div class="control"><label>Frequency (Hz)</label><input id="frequency" type="number" min="45" max="65" value="50"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Water &amp; sensor settings</h2>
+      <div class="control"><label>Overhead tank level <b id="levelText">35%</b></label><input id="level" type="range" min="0" max="100" value="35"></div>
+      <div class="control" style="margin-top:7px"><label>Source water <b id="sourceText">80%</b></label><input id="sourceLevel" type="range" min="0" max="100" value="80"></div>
+      <div class="grid" style="margin-top:7px">
+        <div class="control"><label>Start threshold (%)</label><input id="low" type="number" min="5" max="70" value="40"></div>
+        <div class="control"><label>Stop threshold (%)</label><input id="high" type="number" min="30" max="98" value="98"></div>
+        <div class="control"><label>Tank capacity (L)</label><input id="capacity" type="number" min="100" max="10000" step="100" value="500"></div>
+        <div class="control"><label>Pump rate (L/min)</label><input id="rate" type="number" min="5" max="200" value="24"></div>
+        <div class="control"><label>Water demand (L/min)</label><input id="demand" type="number" min="0" max="100" value="4"></div>
+        <div class="control"><label>Leak rate (L/min)</label><input id="leak" type="number" min="0" max="30" value="0"></div>
+      </div>
+      <div class="control" style="margin-top:7px"><label>Simulation speed <b id="speedText">1×</b></label><input id="simSpeed" type="range" min="1" max="10" value="1"></div>
+      <p style="font-size:11px">Simplified water balance model; not full fluid dynamics.</p>
+    </div>
+
+    <div class="card">
+      <div class="bar" style="padding:0 0 10px;border:0"><h2>Safety &amp; fault testing</h2><span id="alarmCount" class="pill on">0 alarms</span></div>
+      <div id="alarm" class="alarm">No active alarms. System ready.</div>
+      <div class="buttons"><button id="alarmSoundBtn" type="button">Enable alarm sound</button></div>
+      <div class="grid" style="margin-top:8px">
+        <div class="control"><label>Test scenario</label>
+          <select id="scenario">
+            <option value="normal">Normal operation</option>
+            <option value="lowSource">Low source / dry run</option>
+            <option value="powerFail">Power failure</option>
+            <option value="highSensor">High-level sensor failure</option>
+            <option value="overload">Motor overload</option>
+            <option value="blocked">Blocked pipe / closed valve</option>
+            <option value="pumpFail">Pump failure / no flow</option>
+            <option value="leak">Leak detection</option>
+            <option value="lowPressure">Low pressure</option>
+          </select>
+        </div>
+        <div class="control"><label>Trip timing</label>
+          <select id="trip"><option value="instant">Immediate</option><option value="delayed">Delayed (3 seconds)</option></select>
+        </div>
+      </div>
+      <div class="buttons"><button id="apply" class="amber">Apply scenario</button><button id="clear">Clear faults</button></div>
+      <div id="sensors" class="sensors"></div>
+    </div>
+
+    <div class="card">
+      <div class="bar" style="padding:0 0 9px;border:0"><h2>Event log</h2><button id="clearLog" style="padding:5px 8px">Clear</button></div>
+      <div id="log" class="log"></div>
+    </div>
+  </section>
+</div>
+
+
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const $ = id => document.getElementById(id);
+const SOURCE_CAP = 1200; // litres in underground source
+
+const DEF = () => ({
+  supply: true, mode: 'auto', run: false, starting: false, estop: false,
+  level: 35, source: 80, energy: 0, time: 0, flow: 0, pressure: 0, power: 0, current: 0,
+  speed: 1, paused: false, overload: false, blocked: false, pumpFail: false,
+  highFail: false, lowPressure: false, leakFault: false, restart: 0, resume: false,
+  startDelay: 0, autoRestart: true, autoValve: true, dual: false, labels: true
+});
+const S = DEF();
+
+const INPUT_DEFAULTS = {
+  voltage: 230, frequency: 50, low: 40, high: 98, capacity: 500, rate: 24, demand: 4, leak: 0
+};
+
+let logs = [], levels = [], flows = [];
+let last = performance.now(), chartTimer = 0, uiTimer = 0, selected = null, timers = [];
+let clickables = [], labelObjs = [];
+
+/* ---------- helpers ---------- */
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function log(m) {
+  logs.unshift({ t: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }), m });
+  logs = logs.slice(0, 50);
+  $('log').innerHTML = logs.map(x => `<p><time>${x.t}</time> — ${esc(x.m)}</p>`).join('');
+}
+const num = (id, d) => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : d; };
+const cap = () => Math.max(100, num('capacity', 500));
+const volt = () => Math.min(480, Math.max(110, num('voltage', 230)));
+const freq = () => Math.min(65, Math.max(45, num('frequency', 50)));
+const demand = () => Math.max(0, num('demand', 0));
+const leakIn = () => Math.max(0, num('leak', 0));
+function rateEff() {
+  return Math.max(5, num('rate', 24)) * (freq() / 50) * (S.lowPressure ? 0.7 : 1);
+}
+function threshold() {
+  const l = Math.max(5, Math.min(70, num('low', 40)));
+  const h = Math.max(30, Math.min(98, num('high', 98)));
+  return [l, Math.max(l + 6, h)];
+}
+const sourceEmpty = () => S.source <= 0.01;
+const voltOk = () => volt() >= 180 && volt() <= 260;
+const pumpOk = () => !S.pumpFail || S.dual;
+const hardFault = () => S.estop || S.overload || S.blocked || !pumpOk();
+const canRun = () => S.supply && voltOk() && !hardFault() && !sourceEmpty() && S.mode !== 'maintenance' && S.restart <= 0;
+
+/* ---------- control logic ---------- */
+function stop(reason) {
+  if (S.run || S.starting) { S.run = false; S.starting = false; log(reason || 'Pump stopped.'); }
+  S.startDelay = 0;
+}
+function start(manual = false) {
+  if (!canRun()) { log('Start rejected: safety interlock active.'); return; }
+  if (S.run || S.starting) return;
+  S.starting = true; S.startDelay = 0.6;
+  log((manual ? 'Manual' : 'Automatic') + ' start sequence initiated.');
+}
+function control(dt) {
+  const [lo, hi] = threshold();
+  if (!S.supply) { if (S.run || S.starting) S.resume = true; stop('Pump stopped: electricity unavailable.'); return; }
+  if (!voltOk()) { stop('Pump stopped: supply voltage out of range.'); return; }
+  if (S.estop) { stop('Emergency stop active.'); return; }
+  if (S.overload) { stop('Motor overload trip.'); return; }
+  if (S.blocked) { stop('Pump stopped: pipe blocked / valve closed.'); return; }
+  if (!pumpOk()) { stop('Pump stopped: pump failure.'); return; }
+  if (sourceEmpty()) { stop('Dry-run protection: source empty.'); return; }
+  if (S.restart > 0) {
+    S.restart = Math.max(0, S.restart - dt);
+    stop('Restart delay active.');
+    if (S.restart > 0) return;
+    if (S.resume) { S.resume = false; if (S.autoRestart) start(false); }
+  }
+  if (S.mode === 'auto') {
+    if (S.level >= 99.5 && S.run) { stop('High-level cutoff: tank full.'); return; }
+    if (S.level >= hi && !S.highFail && S.run) { stop('High-level sensor reached stop threshold.'); return; }
+    if (!S.run && !S.starting && S.level <= lo) start(false);
+  } else if (S.mode === 'maintenance') {
+    stop('Maintenance mode disables the motor.');
+    return;
+  }
+  if (S.starting) {
+    S.startDelay -= dt;
+    if (S.startDelay <= 0) {
+      S.starting = false;
+      if (canRun()) { S.run = true; log('Contactor energized; pump RUNNING.'); }
+      else stop('Start cancelled by safety interlock.');
+    }
+  }
+}
+
+/* ---------- physics ---------- */
+function physics(dt) {
+  control(dt);
+  const flow = (S.run && !S.blocked && pumpOk() && !sourceEmpty()) ? rateEff() : 0;
+  const leak = leakIn() + (S.leakFault ? 5 : 0);
+  const slowDrain = 0.6; // % per minute baseline evaporation / usage
+  const netLpm = flow - demand() - leak;
+  const netPctPerMin = (netLpm / cap() * 100) - slowDrain;
+  S.level = THREE.MathUtils.clamp(S.level + netPctPerMin * dt / 60, 0, 100);
+
+  const type = $('sourceType').value;
+  const refill = type === 'municipal' ? 4 : type === 'rain' ? 1 : 0; // % per minute
+  S.source = THREE.MathUtils.clamp(S.source + (refill * dt / 60) - (flow * dt / 60 / SOURCE_CAP * 100), 0, 100);
+  if (S.source <= 0 && S.run) { S.source = 0; stop('Source empty: dry-run protection tripped.'); }
+
+  S.flow = flow;
+  S.pressure = flow ? Math.max(0.1, 1.6 - (S.lowPressure ? 1.3 : 0)) : 0;
+  S.power = S.run ? 750 * (Math.max(5, num('rate', 24)) / 24) : 0;
+  S.current = S.run ? S.power / (volt() * 0.82) : 0;
+  if (S.run) S.energy += S.power / 1000 * dt / 3600;
+  S.time += dt;
+
+  if (S.level >= 100) { S.level = 100; if (S.run || S.starting) stop('High-high safety cutoff prevented overflow.'); }
+
+  chartTimer += dt;
+  if (chartTimer > 2) {
+    chartTimer = 0;
+    levels.push(S.level); flows.push(S.flow);
+    levels = levels.slice(-70); flows = flows.slice(-70);
+  }
+}
+
+/* ---------- Three.js scene ---------- */
+const viewport = $('viewport');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#102c42');
+scene.fog = new THREE.Fog('#102c42', 25, 60);
+
+const camera = new THREE.PerspectiveCamera(44, 1, 0.1, 100);
+const CAM_HOME = [12, 10, 16];
+camera.position.set(...CAM_HOME);
+
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+} catch (e) {
+  viewport.innerHTML = '<p style="padding:20px">WebGL is not available in this browser.</p>';
+  throw e;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+viewport.appendChild(renderer.domElement);
+
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.enableDamping = true;
+orbit.target.set(0, 2, 0);
+orbit.maxPolarAngle = 1.48;
+
+scene.add(new THREE.HemisphereLight(0xc9eeff, 0x29343c, 2.2));
+const sun = new THREE.DirectionalLight(0xffedce, 3);
+sun.position.set(8, 14, 7);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -16, right: 16, top: 16, bottom: -16, near: 1, far: 50 });
+scene.add(sun);
+
+const material = (c, rough = 0.5, metal = 0.1, trans = false, opacity = 1) =>
+  new THREE.MeshStandardMaterial({ color: c, roughness: rough, metalness: metal, transparent: trans, opacity });
+const M = {
+  ground: material('#40575d'), metal: material('#aabdc7', 0.3, 0.65),
+  dark: material('#344e5d', 0.4, 0.6), blue: material('#197ca5', 0.35, 0.5),
+  pump: material('#e7a33c', 0.35, 0.5), glass: material('#70c8e4', 0.2, 0.1, true, 0.24),
+  water: material('#1ebce8', 0.22, 0.05, true, 0.83), black: material('#081923'),
+  white: material('#eaf7ff'), house: material('#8b9aa3', 0.7, 0.05), roof: material('#7a3f3a', 0.7, 0.05)
+};
+const lampMat = () => new THREE.MeshStandardMaterial({ color: '#627887', emissive: '#000000', emissiveIntensity: 1 });
+const setLamp = (m, hex) => { m.color.set(hex); m.emissive.set(hex); m.emissiveIntensity = 0.55; };
+
+function add(o, name) { o.castShadow = true; o.receiveShadow = true; o.userData.name = name; scene.add(o); clickables.push(o); return o; }
+function cube(name, p, s, m) { const o = add(new THREE.Mesh(new THREE.BoxGeometry(...s), m), name); o.position.set(...p); return o; }
+function cylinder(name, p, r, h, m, rot = [0, 0, 0], r2 = r) {
+  const o = add(new THREE.Mesh(new THREE.CylinderGeometry(r, r2, h, 24), m), name);
+  o.position.set(...p); o.rotation.set(...rot); return o;
+}
+function pipe(name, a, b, r = 0.08, m = M.metal) {
+  const A = new THREE.Vector3(...a), B = new THREE.Vector3(...b), d = B.clone().sub(A);
+  const o = add(new THREE.Mesh(new THREE.CylinderGeometry(r, r, d.length(), 16), m), name);
+  o.position.copy(A.clone().add(B).multiplyScalar(0.5));
+  o.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d.normalize());
+  return o;
+}
+function ball(name, p, r, m) { const o = add(new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), m), name); o.position.set(...p); return o; }
+function label(txt, p) {
+  const c = document.createElement('canvas'); c.width = 512; c.height = 96;
+  const x = c.getContext('2d');
+  x.fillStyle = '#071a28dd'; x.strokeStyle = '#5c8298'; x.lineWidth = 4;
+  x.beginPath();
+  if (x.roundRect) x.roundRect(3, 3, 506, 90, 15); else x.rect(3, 3, 506, 90);
+  x.fill(); x.stroke();
+  x.font = 'bold 34px system-ui'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillStyle = '#effaff'; x.fillText(txt, 256, 48);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  const o = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 0.47),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, side: THREE.DoubleSide }));
+  o.position.set(...p);
+  scene.add(o); labelObjs.push(o);
+}
+
+/* ---------- build world ---------- */
+cube('Ground', [0, -0.25, 0], [20, 0.5, 13], M.ground);
+
+// Underground source tank (glass wall so the water level is visible)
+cylinder('Underground source tank', [-6, 0, 0], 1.65, 1.4, M.glass);
+const sourceWater = cylinder('Source water', [-6, 0, 0], 1.55, 1.0, M.water);
+sourceWater.userData.name = 'Source water';
+cylinder('Source tank rim', [-6, 0.73, 0], 1.7, 0.12, M.metal);
+
+// Pump set
+cube('Pump foundation', [-1, 0.05, 0], [3, 0.25, 1.8], M.metal);
+cylinder('Pump motor', [-1, 0.9, 0], 0.48, 1.25, M.blue, [Math.PI / 2, 0, 0]);
+cylinder('Pump casing', [-1, 0.9, 0.72], 0.6, 0.38, M.pump, [Math.PI / 2, 0, 0]);
+cylinder('Motor shaft', [-1, 0.9, 1], 0.12, 0.35, M.metal, [Math.PI / 2, 0, 0]);
+const fan = cylinder('Motor fan', [-1, 0.9, 1.2], 0.28, 0.06, M.dark, [Math.PI / 2, 0, 0]);
+const blade = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.09, 0.07), M.white);
+fan.add(blade);
+
+// Standby pump (visible when duty/standby is enabled)
+const standby = new THREE.Group();
+{
+  const mot = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 1.0, 24), M.blue);
+  mot.rotation.x = Math.PI / 2;
+  const cas = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.32, 24), M.pump);
+  cas.rotation.x = Math.PI / 2; cas.position.z = 0.6;
+  standby.add(mot, cas);
+  standby.traverse(o => { if (o.isMesh) { o.castShadow = true; o.userData.name = 'Standby pump'; clickables.push(o); } });
+  standby.position.set(-1, 0.9, -2.6);
+  standby.visible = false;
+  scene.add(standby);
+}
+
+// Piping
+pipe('Suction pipe', [-6, 0.55, 0], [-2.8, 0.55, 0]);
+pipe('Suction riser', [-2.8, 0.55, 0], [-2.8, 0.9, 0]);
+pipe('Pump suction', [-2.8, 0.9, 0], [-1.6, 0.9, 0]);
+pipe('Pump discharge', [-0.3, 0.9, 0], [1.3, 0.9, 0]);
+pipe('Riser pipe', [1.3, 0.9, 0], [1.3, 3.6, 0]);
+pipe('Tank inlet', [1.3, 3.6, 0], [2.8, 3.6, 0]);
+pipe('Distribution outlet', [5.2, 2.8, 0], [6.7, 2.8, 0]);
+pipe('House supply riser', [6.7, 2.8, 0], [6.7, 0.7, 0]);
+pipe('House supply', [6.7, 0.7, 0], [8.1, 0.7, 0]);
+
+// Inlet valve
+const valveMat = lampMat();
+const valve = ball('Inlet valve', [-4.4, 0.55, 0], 0.22, valveMat);
+
+// Overhead tank
+for (const [x, z] of [[3, -1], [5, -1], [3, 1], [5, 1]]) cube('Tank support leg', [x, 1.35, z], [0.17, 2.5, 0.17], M.dark);
+cube('Tank platform', [4, 2.55, 0], [2.5, 0.18, 2.5], M.metal);
+const TANK_BASE = 2.65, TANK_H = 1.8;
+const tankWater = cube('Overhead tank water', [4, TANK_BASE, 0], [2.25, 0.02, 2.25], M.water);
+cube('Overhead tank body', [4, 3.55, 0], [2.4, 1.8, 2.4], M.glass);
+cube('Tank top rim', [4, 4.49, 0], [2.5, 0.12, 2.5], M.metal);
+
+// Float sensors on the tank front face
+const lowMat = lampMat(), highMat = lampMat();
+const lowSensor = ball('Low-level sensor', [4, 3, 1.28], 0.08, lowMat);
+const highSensor = ball('High-level sensor', [4, 4.2, 1.28], 0.08, highMat);
+
+// Control panel + status lamp
+cube('Control panel', [-1, 0.85, -1.9], [1.3, 1.4, 0.35], M.dark);
+const panelLamp = lampMat();
+ball('Panel status lamp', [-1, 1.7, -1.9], 0.14, panelLamp);
+pipe('Motor power cable', [-1, 0.85, -1.7], [-1, 0.9, -0.5], 0.04, M.black);
+
+// House
+cube('House', [9, 1.0, 0], [1.8, 2.0, 2.4], M.house);
+const roof = add(new THREE.Mesh(new THREE.ConeGeometry(1.9, 0.9, 4), M.roof), 'House roof');
+roof.position.set(9, 2.45, 0); roof.rotation.y = Math.PI / 4;
+
+// Labels
+label('Underground source', [-6, 2.0, 0]);
+label('Pump & motor', [-1, 2.3, 0]);
+label('Control panel', [-1, 2.3, -1.9]);
+label('Overhead tank', [4, 5.2, 0]);
+label('Inlet valve', [-4.4, 1.2, 0]);
+label('House supply', [8, 1.6, 1.8]);
+
+/* ---------- water particles ---------- */
+function makePath(pts) {
+  const L = [0]; let t = 0;
+  for (let i = 1; i < pts.length; i++) { t += pts[i].distanceTo(pts[i - 1]); L.push(t); }
+  return { pts, L, total: t };
+}
+function pointOn(path, d, out) {
+  d = ((d % path.total) + path.total) % path.total;
+  let i = 1;
+  while (i < path.L.length - 1 && path.L[i] < d) i++;
+  const k = (d - path.L[i - 1]) / (path.L[i] - path.L[i - 1] || 1);
+  return out.copy(path.pts[i - 1]).lerp(path.pts[i], k);
+}
+const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+const path1 = makePath([V3(-6, .55, 0), V3(-2.8, .55, 0), V3(-2.8, .9, 0), V3(1.3, .9, 0), V3(1.3, 3.6, 0), V3(2.9, 3.6, 0)]);
+const path2 = makePath([V3(5.2, 2.8, 0), V3(6.7, 2.8, 0), V3(6.7, .7, 0), V3(8.1, .7, 0)]);
+function makeParticles(path, n) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
+  const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0x7fe6ff, size: 0.16 }));
+  pts.frustumCulled = false;
+  scene.add(pts);
+  return { pts, path, n, t: Array.from({ length: n }, (_, i) => i / n * path.total) };
+}
+const P1 = makeParticles(path1, 60), P2 = makeParticles(path2, 18);
+const tmp = new THREE.Vector3();
+function updateParticles(P, speed, on, dt) {
+  P.pts.visible = on;
+  if (!on) return;
+  const pos = P.pts.geometry.attributes.position;
+  for (let i = 0; i < P.n; i++) {
+    P.t[i] = (P.t[i] + speed * dt) % P.path.total;
+    pointOn(P.path, P.t[i], tmp);
+    pos.setXYZ(i, tmp.x, tmp.y, tmp.z);
+  }
+  pos.needsUpdate = true;
+}
+
+/* ---------- picking / info panel ---------- */
+const info = document.createElement('div');
+info.style.cssText = 'position:absolute;top:10px;left:10px;max-width:270px;background:#061622ee;border:1px solid #2a4b60;border-radius:9px;padding:8px 10px;font-size:12px;display:none;z-index:6;line-height:1.45';
+viewport.appendChild(info);
+
+function describe(n) {
+  const lv = `${S.level.toFixed(0)}% (${(S.level / 100 * cap()).toFixed(0)} L)`;
+  const map = {
+    'Pump motor': `Electric motor — ${S.run ? 'RUNNING' : 'stopped'}<br>${S.power.toFixed(0)} W · ${S.current.toFixed(2)} A`,
+    'Pump casing': `Centrifugal pump — delivers ${S.flow.toFixed(1)} L/min`,
+    'Motor fan': `Cooling fan, spins while motor runs.`,
+    'Underground source tank': `Source water: ${S.source.toFixed(0)}% (${(S.source / 100 * SOURCE_CAP).toFixed(0)} L)`,
+    'Source water': `Source water: ${S.source.toFixed(0)}% (${(S.source / 100 * SOURCE_CAP).toFixed(0)} L)`,
+    'Overhead tank body': `Overhead tank level: ${lv}`,
+    'Overhead tank water': `Overhead tank level: ${lv}`,
+    'Low-level sensor': `Start sensor at ${threshold()[0]}% — ${S.level > threshold()[0] ? 'wet (OK)' : 'dry → pump should start'}`,
+    'High-level sensor': `Stop sensor at ${threshold()[1]}% — ${S.highFail ? 'FAILED' : (S.level >= threshold()[1] ? 'wet → pump stops' : 'dry')}`,
+    'Inlet valve': S.blocked ? 'Closed / blocked' : 'Open',
+    'Control panel': `Mode: ${S.mode.toUpperCase()} · Supply ${S.supply ? 'ON' : 'OFF'} · ${volt().toFixed(0)} V / ${freq().toFixed(0)} Hz`,
+    'Panel status lamp': 'Green = running, amber = standby, red = fault / off.',
+    'Standby pump': 'Duty/standby second pump — takes over if the main pump fails.',
+    'House': `Household demand: ${demand().toFixed(1)} L/min`
+  };
+  return map[n] || 'Piping / structure.';
+}
+function showInfo() {
+  if (!selected) { info.style.display = 'none'; return; }
+  info.style.display = 'block';
+  info.innerHTML = `<b style="color:#42d3f5">${esc(selected)}</b><br>${describe(selected)}`;
+}
+const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+let down = null;
+renderer.domElement.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 5) return;
+  const r = renderer.domElement.getBoundingClientRect();
+  mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  const hit = ray.intersectObjects(clickables.filter(o => o.visible && (o.parent === scene || o.parent?.visible)), false)[0];
+  selected = hit ? hit.object.userData.name : null;
+  showInfo();
+});
+
+/* ---------- resize ---------- */
+function resize() {
+  const w = viewport.clientWidth, h = viewport.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(viewport);
+resize();
+
+/* ---------- UI ---------- */
+const sensorDefs = [
+  ['Mains supply', () => S.supply && voltOk()],
+  ['Low-level float', () => S.level > threshold()[0]],
+  ['High-level float', () => !S.highFail],
+  ['Source level', () => !sourceEmpty()],
+  ['Overload relay', () => !S.overload],
+  ['Flow switch', () => !S.run || S.flow > 0],
+  ['Pressure switch', () => !S.run || S.pressure >= 0.8],
+  ['Leak sensor', () => !(leakIn() > 0 || S.leakFault)],
+  ['Inlet valve', () => !S.blocked]
+];
+$('sensors').innerHTML = sensorDefs.map((s, i) => `<div class="sensor"><i class="lamp" id="lamp${i}"></i>${s[0]}</div>`).join('');
+
+function drawChart(id, data, max, color) {
+  const c = $(id), x = c.getContext('2d'), w = c.width, h = c.height;
+  x.clearRect(0, 0, w, h);
+  x.strokeStyle = '#244356'; x.lineWidth = 1;
+  for (let i = 1; i < 4; i++) { x.beginPath(); x.moveTo(0, h * i / 4); x.lineTo(w, h * i / 4); x.stroke(); }
+  if (data.length < 2) return;
+  x.strokeStyle = color; x.lineWidth = 2; x.beginPath();
+  data.forEach((v, i) => {
+    const px = w - (data.length - 1 - i) / 69 * w;
+    const py = h - Math.min(1, v / max) * (h - 6) - 3;
+    i ? x.lineTo(px, py) : x.moveTo(px, py);
+  });
+  x.stroke();
+}
+
+function fmtTime(s) {
+  s = Math.floor(s);
+  return `${Math.floor(s / 3600)}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+}
+
+function activeAlarms() {
+  const a = [];
+  if (!S.supply) a.push('Mains power failure');
+  else if (!voltOk()) a.push(`Supply voltage out of range (${volt().toFixed(0)} V)`);
+  if (S.estop) a.push('Emergency stop engaged');
+  if (S.overload) a.push('Motor overload trip');
+  if (S.blocked) a.push('Blocked pipe / closed valve');
+  if (S.pumpFail) a.push(S.dual ? 'Main pump failed — standby pump running' : 'Pump failure');
+  if (sourceEmpty()) a.push('Source empty — dry-run lockout');
+  if (S.highFail) a.push('High-level sensor failure');
+  if (S.leakFault || leakIn() > 0) a.push('Leak detected');
+  if (S.run && S.pressure < 0.8) a.push('Low discharge pressure');
+  if (S.level < 15) a.push('Overhead tank very low');
+  if (S.level > 97 && S.run) a.push('Overflow risk — tank nearly full');
+  return a;
+}
+
+
+/* ---------- audible alarm ---------- */
+let alarmAudioContext = null;
+let alarmSoundEnabled = false;
+let previousAlarmActive = false;
+
+function playAlarmTone() {
+  if (!alarmSoundEnabled || !alarmAudioContext) return;
+  const ctx = alarmAudioContext;
+  const startAt = ctx.currentTime;
+  [0, 0.24, 0.48].forEach((offset) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(880, startAt + offset);
+    gain.gain.setValueAtTime(0.0001, startAt + offset);
+    gain.gain.exponentialRampToValueAtTime(0.12, startAt + offset + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startAt + offset + 0.16);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(startAt + offset);
+    osc.stop(startAt + offset + 0.17);
+  });
+}
+
+$('alarmSoundBtn').addEventListener('click', async () => {
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) {
+    $('alarmSoundBtn').textContent = 'Sound not supported';
+    $('alarmSoundBtn').disabled = true;
+    return;
+  }
+
+  if (!alarmSoundEnabled) {
+    alarmAudioContext = alarmAudioContext || new AudioContextClass();
+    if (alarmAudioContext.state === 'suspended') await alarmAudioContext.resume();
+    alarmSoundEnabled = true;
+    $('alarmSoundBtn').textContent = 'Disable alarm sound';
+    $('alarmSoundBtn').classList.add('green');
+    if (activeAlarms().length) playAlarmTone();
+  } else {
+    alarmSoundEnabled = false;
+    $('alarmSoundBtn').textContent = 'Enable alarm sound';
+    $('alarmSoundBtn').classList.remove('green');
+  }
+});
+
+function updateUI() {
+  const [lo, hi] = threshold();
+
+  // status pill
+  let st;
+  if (!S.supply) st = ['POWER OFF', 'bad'];
+  else if (S.estop) st = ['E-STOP', 'bad'];
+  else if (hardFault()) st = ['FAULT', 'bad'];
+  else if (!voltOk()) st = ['VOLTAGE FAULT', 'bad'];
+  else if (S.mode === 'maintenance') st = ['MAINTENANCE', 'warn'];
+  else if (S.starting) st = ['STARTING', 'warn'];
+  else if (S.run) st = ['RUNNING', 'on'];
+  else if (sourceEmpty()) st = ['DRY-RUN LOCKOUT', 'bad'];
+  else if (S.restart > 0) st = ['RESTART DELAY', 'warn'];
+  else st = ['STANDBY', 'warn'];
+  $('status').textContent = st[0]; $('status').className = 'pill ' + st[1];
+
+  $('modeBadge').textContent = S.mode.toUpperCase();
+  $('modeBadge').className = 'pill ' + (S.mode === 'auto' ? 'on' : S.mode === 'manual' ? 'warn' : 'bad');
+  $('mode').value = S.mode;
+
+  $('power').textContent = S.supply ? 'Supply ON' : 'Supply OFF';
+  $('power').className = S.supply ? 'green' : 'red';
+  $('estop').textContent = S.estop ? 'Reset E-stop' : 'Emergency stop';
+
+  // stats
+  $('tankStat').textContent = (S.level / 100 * cap()).toFixed(0) + ' L';
+  $('tankPct').textContent = `${S.level.toFixed(0)}% / ${cap().toFixed(0)} L`;
+  $('sourceStat').textContent = (S.source / 100 * SOURCE_CAP).toFixed(0) + ' L';
+  $('flowStat').textContent = S.flow.toFixed(1) + ' L/min';
+  $('pressureStat').textContent = S.pressure.toFixed(2) + ' bar';
+  $('powerStat').textContent = S.power.toFixed(0) + ' W';
+  $('currentStat').textContent = S.current.toFixed(2) + ' A estimated';
+  $('energyStat').textContent = S.energy.toFixed(3) + ' kWh';
+  $('demandStat').textContent = (demand() + leakIn() + (S.leakFault ? 5 : 0)).toFixed(1) + ' L/min';
+  $('clockStat').textContent = fmtTime(S.time);
+
+  // sliders
+  if (document.activeElement !== $('level')) $('level').value = Math.round(S.level);
+  if (document.activeElement !== $('sourceLevel')) $('sourceLevel').value = Math.round(S.source);
+  $('levelText').textContent = S.level.toFixed(0) + '%';
+  $('sourceText').textContent = S.source.toFixed(0) + '%';
+  $('speedText').textContent = S.speed + '×';
+  $('speedBtn').textContent = 'Speed ' + S.speed + '×';
+  $('simSpeed').value = S.speed;
+  $('pause').textContent = S.paused ? '▶ Resume' : '⏸ Pause';
+
+  // KCL / KVL  (V = I·Rwire + Vmotor)
+  const Vs = S.supply ? volt() : 0, I = S.current, Rw = 0.6;
+  const Vw = I * Rw, Vm = Vs - Vw, Iout = I;
+  $('kclIn').textContent = I.toFixed(2) + ' A';
+  $('kclOut').textContent = Iout.toFixed(2) + ' A';
+  $('kclDiff').textContent = (I - Iout).toFixed(3) + ' A';
+  $('kvlSupply').textContent = Vs.toFixed(2) + ' V';
+  $('kvlMotor').textContent = Vm.toFixed(2) + ' V';
+  $('kvlWire').textContent = Vw.toFixed(2) + ' V';
+  $('kvlSum').textContent = (Vm + Vw).toFixed(2) + ' V';
+  $('kvlDiff').textContent = (Vs - (Vm + Vw)).toFixed(3) + ' V';
+
+  // alarms
+  const al = activeAlarms();
+  const alarmIsActive = al.length > 0;
+  if (alarmIsActive && !previousAlarmActive) playAlarmTone();
+  previousAlarmActive = alarmIsActive;
+  $('alarmCount').textContent = al.length + (al.length === 1 ? ' alarm' : ' alarms');
+  $('alarmCount').className = 'pill ' + (al.length ? 'bad' : 'on');
+  $('alarm').className = 'alarm' + (al.length ? ' active' : '');
+  $('alarm').innerHTML = al.length ? al.map(esc).join('<br>') : 'No active alarms. System ready.';
+
+  // sensors
+  sensorDefs.forEach((s, i) => { $('lamp' + i).className = 'lamp ' + (s[1]() ? 'ok' : 'no'); });
+
+  // 3D indicator colours
+  setLamp(lowMat, S.level > lo ? '#50e0a2' : '#ff6578');
+  setLamp(highMat, S.highFail ? '#ff6578' : (S.level >= hi ? '#ffd166' : '#50e0a2'));
+  setLamp(valveMat, S.blocked ? '#ff6578' : '#50e0a2');
+  setLamp(panelLamp, !S.supply || hardFault() || !voltOk() ? '#ff6578' : S.run ? '#50e0a2' : '#ffd166');
+
+  standby.visible = S.dual;
+  showInfo();
+
+  drawChart('chartTank', levels, 100, '#42d3f5');
+  drawChart('chartFlow', flows, Math.max(rateEff() * 1.2, 30), '#50e0a2');
+}
+
+/* ---------- actions ---------- */
+function setSupply(v) {
+  if (v === S.supply) return;
+  S.supply = v;
+  if (!v) {
+    log('Mains power LOST.');
+  } else {
+    log('Mains power restored.');
+    S.restart = 5; // inrush protection delay
+    if (!S.autoRestart && S.mode === 'auto') {
+      S.mode = 'manual'; S.resume = false;
+      log('Auto restart disabled: switched to Manual mode.');
+    }
+  }
+}
+function applyScenario(sc) {
+  switch (sc) {
+    case 'lowSource': S.source = 0; log('Fault: source water depleted.'); break;
+    case 'powerFail': setSupply(false); break;
+    case 'highSensor': S.highFail = true; log('Fault: high-level sensor failed (tank may overflow).'); break;
+    case 'overload': S.overload = true; log('Fault: motor overload.'); break;
+    case 'blocked': S.blocked = true; log('Fault: pipe blocked / valve closed.'); break;
+    case 'pumpFail': S.pumpFail = true; log(S.dual ? 'Fault: main pump failed — standby pump takes over.' : 'Fault: pump failure.'); break;
+    case 'leak': S.leakFault = true; log('Fault: leak in distribution line (+5 L/min).'); break;
+    case 'lowPressure': S.lowPressure = true; log('Fault: low discharge pressure.'); break;
+  }
+}
+function clearFaults() {
+  timers.forEach(clearTimeout); timers = [];
+  S.estop = S.overload = S.blocked = S.pumpFail = S.highFail = S.lowPressure = S.leakFault = false;
+  if (S.source < 50) S.source = 50;
+  setSupply(true);
+  $('scenario').value = 'normal';
+  log('All faults cleared.');
+}
+function resetAll() {
+  timers.forEach(clearTimeout); timers = [];
+  Object.assign(S, DEF());
+  for (const [k, v] of Object.entries(INPUT_DEFAULTS)) $(k).value = v;
+  $('mode').value = 'auto'; $('sourceType').value = 'underground'; $('scenario').value = 'normal'; $('trip').value = 'instant';
+  $('autoRestart').checked = true; $('autoValve').checked = true; $('dual').checked = false;
+  levels = [S.level]; flows = [0]; chartTimer = 0;
+  logs = []; log('Simulation reset.');
+  labelObjs.forEach(o => o.visible = true);
+  selected = null;
+}
+
+$('power').onclick = () => setSupply(!S.supply);
+$('mode').onchange = e => {
+  S.mode = e.target.value;
+  if (S.mode === 'maintenance') stop('Maintenance mode disables the motor.');
+  log('Mode changed to ' + S.mode + '.');
+};
+$('sourceType').onchange = e => log('Water source: ' + e.target.selectedOptions[0].textContent + '.');
+$('start').onclick = () => {
+  if (S.mode === 'maintenance') { log('Start rejected: maintenance mode.'); return; }
+  start(true);
+};
+$('stop').onclick = () => {
+  stop('Pump stopped by operator.');
+  if (S.mode === 'auto') { S.mode = 'manual'; log('Switched to Manual so the pump stays off.'); }
+};
+$('estop').onclick = () => {
+  S.estop = !S.estop;
+  if (S.estop) { stop('EMERGENCY STOP pressed.'); log('Emergency stop engaged.'); }
+  else log('Emergency stop reset.');
+};
+$('autoRestart').onchange = e => { S.autoRestart = e.target.checked; };
+$('autoValve').onchange = e => { S.autoValve = e.target.checked; log('Automatic inlet valve ' + (e.target.checked ? 'enabled.' : 'disabled (manual).')); };
+$('dual').onchange = e => { S.dual = e.target.checked; log('Duty/standby pump ' + (e.target.checked ? 'enabled.' : 'disabled.')); };
+$('level').oninput = e => { S.level = +e.target.value; };
+$('sourceLevel').oninput = e => { S.source = +e.target.value; };
+$('simSpeed').oninput = e => { S.speed = +e.target.value; };
+$('speedBtn').onclick = () => {
+  const steps = [1, 2, 5, 10];
+  S.speed = steps[(steps.indexOf(S.speed) + 1) % steps.length] || 1;
+};
+$('pause').onclick = () => { S.paused = !S.paused; };
+$('reset').onclick = resetAll;
+$('camera').onclick = () => { camera.position.set(...CAM_HOME); orbit.target.set(0, 2, 0); orbit.update(); };
+$('labels').onclick = () => { S.labels = !S.labels; labelObjs.forEach(o => o.visible = S.labels); };
+$('clearLog').onclick = () => { logs = []; $('log').innerHTML = ''; };
+$('apply').onclick = () => {
+  const sc = $('scenario').value;
+  if (sc === 'normal') { clearFaults(); return; }
+  if ($('trip').value === 'delayed') {
+    log('Scenario will trigger in 3 seconds…');
+    timers.push(setTimeout(() => applyScenario(sc), 3000));
+  } else applyScenario(sc);
+};
+$('clear').onclick = clearFaults;
+
+/* ---------- animation loop ---------- */
+function frame(now) {
+  const real = Math.min(0.1, (now - last) / 1000);
+  last = now;
+
+  if (!S.paused) {
+    let dt = real * S.speed;
+    while (dt > 1e-6) { const s = Math.min(dt, 0.25); physics(s); dt -= s; }
+  }
+
+  // visuals
+  if (S.run && !S.paused) fan.rotateY(real * 25);
+  const h = Math.max(0.01, TANK_H * S.level / 100);
+  tankWater.scale.y = h / 0.02;
+  tankWater.position.y = TANK_BASE + h / 2;
+  const sh = Math.max(0.01, 1.0 * S.source / 100);
+  sourceWater.scale.y = sh;
+  sourceWater.position.y = -0.5 + sh / 2;
+
+  const [lo, hi] = threshold();
+  lowSensor.position.y = TANK_BASE + TANK_H * lo / 100;
+  highSensor.position.y = TANK_BASE + TANK_H * hi / 100;
+
+  const vis = S.paused ? 0 : real;
+  updateParticles(P1, 1.8 + S.flow / 24, S.flow > 0, vis);
+  updateParticles(P2, 1.0, S.level > 0.5 && (demand() > 0 || S.leakFault), vis);
+
+  labelObjs.forEach(o => o.quaternion.copy(camera.quaternion));
+
+  uiTimer += real;
+  if (uiTimer > 0.1) { uiTimer = 0; updateUI(); }
+
+  orbit.update();
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+levels = [S.level]; flows = [0];
+log('Simulator ready. Mains ON, mode AUTO.');
+updateUI();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
